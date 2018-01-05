@@ -32,6 +32,7 @@ using timw255.Sitefinity.SuperForms.Widgets.Form.Designers;
 namespace timw255.Sitefinity.SuperForms.FormControls
 {
     [ControlDesigner(typeof(CustomFormsControlDesigner))]
+    [RequiresEmbeddedWebResource("Telerik.Sitefinity.Resources.Themes.LayoutsBasics.css", "Telerik.Sitefinity.Resources.Reference")]
     public sealed class LogicalFormsControl : FormsControl
     {
         private bool _progressiveProfiling;
@@ -415,9 +416,30 @@ namespace timw255.Sitefinity.SuperForms.FormControls
 
                 if (fieldControl.GetType().Name == "FormFileUpload")
                 {
-                    typeof(FormsControl)
-                        .GetMethod("SaveFiles", BindingFlags.Static | BindingFlags.NonPublic)
-                        .Invoke(null, new object[] { value as UploadedFileCollection, manager, description, userHostAddress, formFieldControl.MetaField.FieldName });
+                    if(formFieldControl.MetaField.FieldName!="")
+                    {
+                        var uploadValue = value as UploadedFileCollection;
+                        var files = new Dictionary<string, List<FormHttpPostedFile>>();
+                        List<FormHttpPostedFile> formHttpPostedFileList = new List<FormHttpPostedFile>();
+                        foreach (UploadedFile uploadedFile in uploadValue)
+                        {
+                            if (uploadedFile != null)
+                                formHttpPostedFileList.Add(new FormHttpPostedFile()
+                                {
+                                    FileName = uploadedFile.FileName,
+                                    InputStream = uploadedFile.InputStream,
+                                    ContentType = uploadedFile.ContentType,
+                                    ContentLength = uploadedFile.ContentLength
+                                });
+                        }
+
+                        files.Add(formFieldControl.MetaField.FieldName, formHttpPostedFileList);
+                        var type = Type.GetType("Telerik.Sitefinity.Modules.Forms.Web.FormsHelper,Telerik.Sitefinity");
+                        var method = type.GetMethod("SaveFiles", BindingFlags.Static | BindingFlags.NonPublic);
+                        var updateMode = _priorFormEntry != null;
+                        method.Invoke(null, new object[] { files, description, userHostAddress, updateMode });                      
+                    }
+                   
                 }
                 else if (!(value is List<string>))
                 {
